@@ -28,12 +28,12 @@ RUN apt-get update && apt-get install -y \
   git
 
 ENV SEC_HOME /sec
-ENV NUM_PROCS 32
+ENV NUM_PROCS `python -c 'import multiprocessing; print(multiprocessing.cpu_count())'`
 ENV MAKEFLAGS -j$NUM_PROCS
 RUN mkdir -p $SEC_HOME
 
 WORKDIR /sec
-RUN git clone https://austin_d_harris@bitbucket.org/utspark/freedom-u-sdk-sec.git && \
+RUN git clone https://austin_d_harris@bitbucket.org/utspark/freedom-u-sdk-sec.git freedom-u-sdk && \
   cd freedom-u-sdk && git checkout sec && git submodule update --init --recursive
 
 WORKDIR /sec/freedom-u-sdk
