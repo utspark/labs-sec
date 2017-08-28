@@ -33,7 +33,7 @@ ENV MAKEFLAGS -j$NUM_PROCS
 RUN mkdir -p $SEC_HOME
 
 WORKDIR /sec
-RUN git clone https://github.com/sifive/freedom-u-sdk.git && \
+RUN git clone https://austin_d_harris@bitbucket.org/utspark/freedom-u-sdk-sec.git && \
   cd freedom-u-sdk && git checkout sec && git submodule update --init --recursive
 
 WORKDIR /sec/freedom-u-sdk
