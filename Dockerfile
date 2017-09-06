@@ -26,21 +26,20 @@ RUN apt-get update && apt-get install -y \
   unzip \
   texinfo \
   pkg-config \
-  git
+  git \
+  vim
 
-ENV SEC_HOME /sec
-ENV NUM_PROCS `python -c 'import multiprocessing; print(multiprocessing.cpu_count())'`
-ENV MAKEFLAGS -j8
+ENV MAKEFLAGS -j$(nproc)
 ENV RISCV /sec/riscv
 ENV PATH $RISCV/bin:$PATH
-RUN mkdir -p $SEC_HOME
+RUN mkdir -p /sec
 
 WORKDIR /sec
 RUN git clone https://austin_d_harris@bitbucket.org/utspark/rocket-chip-sec.git rocket-chip && \
-  cd rocket-chip && git submodule update --init --recursive
+  cd rocket-chip && git checkout sec && git submodule update --init --recursive
 RUN mkdir -p $RISCV
 RUN cd rocket-chip && git clone https://austin_d_harris@bitbucket.org/utspark/rocc-template-sec.git rocc-template && \
-  cd rocc-template && ./install-symlinks
+  cd rocc-template && git checkout rsa && ./install-symlinks
 RUN cd rocket-chip/riscv-tools/riscv-isa-sim && autoreconf
 RUN git clone https://austin_d_harris@bitbucket.org/utspark/freedom-u-sdk-sec.git freedom-u-sdk && \
   cd freedom-u-sdk && git checkout sec && git submodule update --init --recursive
@@ -52,5 +51,3 @@ RUN cd riscv-gnu-toolchain/build && make linux
 WORKDIR /sec/freedom-u-sdk
 RUN make
 RUN make bbl
-
-WORKDIR /sec
