@@ -56,6 +56,9 @@ def classify(args):
     df = make_fmat( get_data(args.infiles) )
 
     # Instantiate classifier with parameters
+    # TODO: You can change the classifier and/or
+    #       post-process the time-series data to
+    #       improve classification
     clf = RFC(  n_estimators=10,
                 max_depth=6,
                 random_state=0,
