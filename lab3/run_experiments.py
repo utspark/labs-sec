@@ -1,6 +1,13 @@
 import argparse
 import subprocess
 import string
+import pandas as pd
+import re
+from io import StringIO
+from sklearn.ensemble import RandomForestClassifier as RFC
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from collections import defaultdict
+from os import path
 
 def runCommand(experiment, shell=False):
     print ("Running command: " + experiment + "\n")
@@ -26,6 +33,42 @@ def gen_traces(args):
                        'output/' + str(i) + '/' + letter + 'query.out')
             runCommand(command, True)
 
+# From list of files, create dictionary of labels (filename) with Event0 counter values
+# Assumes:  Output columns of the form 'Core,IPC,Instructions,Cycles,Event0,...'
+#           Label is filename
+def get_data(filenames):
+    matrix = defaultdict(list)
+    get_event0 = lambda x : x.split(',')[4]
+    for filename in filenames:
+        base = path.basename(filename)
+        # Create timeseries features with 'Event0' counter
+        with open(filename) as f:
+            matrix[base].append( map(get_event0, re.findall('(\*.*)', f.read())) )
+    return matrix
+
+# Creates pandas dataframe from dictionary
+def make_fmat(data):
+    mat = [ [k] + iv for k,v in data.iteritems() for iv in v ]
+    return pd.DataFrame(mat).fillna(0).rename(index=str, columns={0:'label'})
+
+def classify(args):
+    # Get data from input files
+    df = make_fmat( get_data(args.infiles) )
+
+    # Instantiate classifier with parameters
+    clf = RFC(  n_estimators=10,
+                max_depth=6,
+                random_state=0,
+                class_weight='balanced_subsample'
+             )
+
+    # Get classifier AUC score with 10 folds
+    fmat = df.as_matrix()
+    X = fmat[:,1:]
+    y = fmat[:,0]
+    scores = cross_val_score(clf, X, y, cv=10, scoring='accuracy')
+    print '10-fold score: %f +/- %f' % (scores.mean(), scores.std()*2)
+
 def main():
     parser = argparse.ArgumentParser(description=
                                      'Run utilization privacy experiments. \
@@ -39,6 +82,10 @@ def main():
     parser.add_argument('--func', action='store', default='gen_traces',
                         help='Function to run \
                         (gen_traces, classify, ...)')
+
+    parser.add_argument('--infiles', type=str, nargs='+', required=False,
+                        help='Input files containing training counter values.\
+                                File name corresponds to the data\'s label.')
 
     args = parser.parse_args()
 
