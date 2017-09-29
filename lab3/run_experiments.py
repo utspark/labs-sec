@@ -3,6 +3,8 @@ import subprocess
 import string
 import pandas as pd
 import re
+import matplotlib.pyplot as plt
+import numpy as np
 from io import StringIO
 from sklearn.ensemble import RandomForestClassifier as RFC
 from sklearn.model_selection import StratifiedKFold, cross_val_score
@@ -38,7 +40,7 @@ def gen_traces(args):
 #           Label is filename
 def get_data(filenames):
     matrix = defaultdict(list)
-    get_event0 = lambda x : x.split(',')[4]
+    get_event0 = lambda x : float(x.split(',')[4])
     for filename in filenames:
         base = path.basename(filename)
         # Create timeseries features with 'Event0' counter
@@ -71,6 +73,17 @@ def classify(args):
     y = fmat[:,0]
     scores = cross_val_score(clf, X, y, cv=10, scoring='accuracy')
     print '10-fold score: %f +/- %f' % (scores.mean(), scores.std()*2)
+
+    #Plot mean trace for each query
+    for label in set(y):
+        data = np.mean(X[y==label], axis=0)
+        plt.plot(xrange(len(data)), data, label=label, markersize=1)
+    plt.ylabel("Memory Requests", fontsize=8)
+    plt.xlabel("Interval", fontsize=8)
+    plt.tick_params(axis='y', labelsize=8)
+    plt.tick_params(axis='x', labelsize=8)
+    plt.legend(prop={'size': 5}, bbox_to_anchor=(1,1))
+    plt.savefig('output/traces.pdf', format='pdf')
 
 def main():
     parser = argparse.ArgumentParser(description=
