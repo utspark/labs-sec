@@ -1,5 +1,5 @@
 import argparse
-import subprocess
+import subprocess32
 import string
 import pandas as pd
 import re
@@ -15,25 +15,32 @@ def runCommand(experiment, shell=False):
     print ("Running command: " + experiment + "\n")
     if not shell:
         experiment = experiment.split()
-    subprocess.call(experiment, shell=shell)
+    try:
+        subprocess32.call(experiment, shell=shell)
+    except:
+        return
 
 def gen_traces(args):
+    keywords = ['CMOS', 'FPGA', 'branch', 'anomaly', 'detection']
     for i in xrange(10):
-        for number,letter in enumerate(string.ascii_uppercase, 1):
+        for keyword in keywords:
             event = 'cpu/umask=0x80,event=0xB0' #OFFCORE_REQUESTS.ALL_REQUESTS
             runCommand("mkdir -p output/" + str(i))
-            mySqlCommand = ("mysql -e 'use employees; select AVG(salary) from employees e join salaries s on e.emp_no = s.emp_no join titles t on e.emp_no = t.emp_no where e.first_name REGEXP " +
-                            '"' +
-                            letter +
-                            '.*";' + "'")
+            # mySqlCommand = ("mysql -e 'use employees; select AVG(salary) from employees e join salaries s on e.emp_no = s.emp_no join titles t on e.emp_no = t.emp_no where e.first_name REGEXP " +
+            #                 '"' +
+            #                 letter +
+            #                 '.*";' + "'")
+
+            mySqlCommand = ("mysql -e 'use qliu14; select * from PUBLICATION where Abstract REGEXP(" + '"' + ".*" + keyword + '.*")' + "'")
             command = ('pcm/pcm-core.x 0.015 -e ' +
                        event +
                        ' -csv=output/' +
-                       str(i) + '/' + letter +
+                       str(i) + '/' + keyword +
                        '.trace -- ' +
                        mySqlCommand + '>' +
-                       'output/' + str(i) + '/' + letter + 'query.out')
+                       'output/' + str(i) + '/' + keyword + 'query.out')
             runCommand(command, True)
+            #runCommand("yes | pcm/pcm-core.x 0.015 -e"  + event, True)
 
 # From list of files, create dictionary of labels (filename) with Event0 counter values
 # Assumes:  Output columns of the form 'Core,IPC,Instructions,Cycles,Event0,...'
@@ -46,6 +53,12 @@ def get_data(filenames):
         # Create timeseries features with 'Event0' counter
         with open(filename) as f:
             matrix[base].append( map(get_event0, re.findall('(\*.*)', f.read())) )
+    minLen = 2**31 -1
+    for base in matrix:
+        for arr in matrix[base]:
+            if len(arr) < minLen: minLen = len(arr)
+        for i in xrange(len(matrix[base])):
+            matrix[base][i] = matrix[base][i][0:minLen]
     return matrix
 
 # Creates pandas dataframe from dictionary
