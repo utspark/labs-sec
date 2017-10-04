@@ -7,9 +7,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from io import StringIO
 from sklearn.ensemble import RandomForestClassifier as RFC
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import KFold, cross_val_score
+from sklearn.metrics import roc_curve, auc, f1_score
+from sklearn.preprocessing import LabelBinarizer
 from collections import defaultdict
 from os import path
+import xgboost as xgb
 
 def runCommand(experiment, shell=False):
     print ("Running command: " + experiment + "\n")
@@ -65,26 +68,69 @@ def make_fmat(data):
     mat = [ [k] + iv for k,v in data.iteritems() for iv in v ]
     return pd.DataFrame(mat).fillna(0).rename(index=str, columns={0:'label'})
 
+# Performs k-fold cross validation and computes F-score for each fold
+# Also reports aggregate AUC with 'micro'-averaging
+# Takes optional argument of classifier to swap out classifier
+# If classifier uses different decision function, specifiy with 'decision'
+def kfold_classify(params, X, y, n_folds, classifier=RFC, decision='predict'):
+    print 'Fitting %d folds' % n_folds
+
+    # shuffle and split training and test sets for each fold
+    kf = KFold(n_splits=n_folds, shuffle=True, random_state=0)
+    for train_index, test_index in kf.split(X):
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+
+        clf = classifier( **params )
+        clf.fit(X_train, y_train)
+        y_pred = getattr(clf, decision)(X_test)
+
+        print 'f1 score: %f' % f1_score(y_test, y_pred, average='micro')
+
+        # Compute roc for each class
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for i in range(y.shape[1]):
+            fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_pred[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # Compute micro-average ROC curve and ROC area
+    fpr["micro"], tpr["micro"], _ = roc_curve(y_test.ravel(), y_pred.ravel())
+    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+    print 'Multiclass, %d-fold AUC: %f' % (n_folds, roc_auc['micro'])
+
 def classify(args):
     # Get data from input files
     df = make_fmat( get_data(args.infiles) )
-
-    # Instantiate classifier with parameters
-    # TODO: You can change the classifier and/or
-    #       post-process the time-series data to
-    #       improve classification
-    clf = RFC(  n_estimators=10,
-                max_depth=6,
-                random_state=0,
-                class_weight='balanced_subsample'
-             )
-
-    # Get classifier AUC score with 10 folds
+    
+    # Get classification data and sanitize
+    # for multiclass problem
+    # TODO: You can post-process the features in "X"
+    #       or add features (more counters, average
+    #       value, sum of values, etc.) 
     fmat = df.as_matrix()
     X = fmat[:,1:]
     y = fmat[:,0]
-    scores = cross_val_score(clf, X, y, cv=10, scoring='accuracy')
-    print '10-fold score: %f +/- %f' % (scores.mean(), scores.std()*2)
+    lb = LabelBinarizer()
+    y_bin = lb.fit_transform(y)
+    n_classes = y_bin.shape[1]
+
+    # We instantiate random forest with these parameters
+    # TODO: You can change the classifier and/or
+    #       post-process the time-series data to
+    #       improve classification
+    # Note: If you change the classifier, parameters should
+    #       be changed accordingly
+    params = {
+            'n_estimators':200,
+            'max_depth':10,
+            'random_state':0,
+            'class_weight':'balanced_subsample',
+    }
+
+    # Perform 5-fold cross validation and report accuracy of each fold
+    kfold_classify(params, X, y_bin, n_folds=5)
 
     #Plot mean trace for each query
     for label in set(y):
