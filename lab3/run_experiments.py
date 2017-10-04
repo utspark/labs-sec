@@ -21,7 +21,7 @@ def runCommand(experiment, shell=False):
         return
 
 def gen_traces(args):
-    keywords = ['CMOS', 'FPGA', 'branch', 'anomaly', 'detection']
+    keywords = ['CMOS', 'FPGA', 'branch', 'anomaly', 'detection', 'prefetch', 'memory', 'floating point', 'malware', 'iot']
     for i in xrange(10):
         for keyword in keywords:
             event = 'cpu/umask=0x80,event=0xB0' #OFFCORE_REQUESTS.ALL_REQUESTS
@@ -31,7 +31,8 @@ def gen_traces(args):
             #                 letter +
             #                 '.*";' + "'")
 
-            mySqlCommand = ("mysql -e 'use qliu14; select * from PUBLICATION where Abstract REGEXP(" + '"' + ".*" + keyword + '.*")' + "'")
+            #mySqlCommand = ("mysql -e 'use qliu14; select * from PUBLICATION where Abstract REGEXP(" + '"' + ".*" + keyword + '.*")' + "'")
+            mySqlCommand = ("mysql -e 'use qliu14; select * from PUBLICATION where Abstract REGEXP(" + '"' + keyword + '")' + "'")
             command = ('pcm/pcm-core.x 0.015 -e ' +
                        event +
                        ' -csv=output/' +
@@ -53,10 +54,8 @@ def get_data(filenames):
         # Create timeseries features with 'Event0' counter
         with open(filename) as f:
             matrix[base].append( map(get_event0, re.findall('(\*.*)', f.read())) )
-    minLen = 2**31 -1
+    minLen = min(map(lambda(k,v): min(map(len, v)), matrix.iteritems()))
     for base in matrix:
-        for arr in matrix[base]:
-            if len(arr) < minLen: minLen = len(arr)
         for i in xrange(len(matrix[base])):
             matrix[base][i] = matrix[base][i][0:minLen]
     return matrix
@@ -90,7 +89,8 @@ def classify(args):
     #Plot mean trace for each query
     for label in set(y):
         data = np.mean(X[y==label], axis=0)
-        plt.plot(xrange(len(data)), data, label=label, markersize=1)
+        #plt.plot(xrange(len(data)), data, label=label, markersize=1)
+        plt.plot(xrange(100), data[0:100], label=label, markersize=1)
     plt.ylabel("Memory Requests", fontsize=8)
     plt.xlabel("Interval", fontsize=8)
     plt.tick_params(axis='y', labelsize=8)
