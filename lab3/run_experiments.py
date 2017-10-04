@@ -34,8 +34,7 @@ def gen_traces(args):
             #                 letter +
             #                 '.*";' + "'")
 
-            #mySqlCommand = ("mysql -e 'use qliu14; select * from PUBLICATION where Abstract REGEXP(" + '"' + ".*" + keyword + '.*")' + "'")
-            mySqlCommand = ("mysql -e 'use qliu14; select * from PUBLICATION where Abstract REGEXP(" + '"' + keyword + '")' + "'")
+            mySqlCommand = ("mysql -e 'use patent; select * from PUBLICATION where Abstract REGEXP(" + '"' + keyword + '")' + "'")
             command = ('pcm/pcm-core.x 0.015 -e ' +
                        event +
                        ' -csv=output/' +
