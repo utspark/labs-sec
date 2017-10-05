@@ -1,5 +1,5 @@
 import argparse
-import subprocess32
+import subprocess
 import string
 import pandas as pd
 import re
@@ -11,51 +11,64 @@ from sklearn.model_selection import KFold, cross_val_score
 from sklearn.metrics import roc_curve, auc, f1_score
 from sklearn.preprocessing import LabelBinarizer
 from collections import defaultdict
-from os import path
+import os
 import xgboost as xgb
+
+def getpid(process_name):
+    processes = os.popen('ps -aef').read()
+    return re.findall('.*mysqld.*', processes)[0].split()[1]
 
 def runCommand(experiment, shell=False):
     print ("Running command: " + experiment + "\n")
     if not shell:
         experiment = experiment.split()
-    try:
-        subprocess32.call(experiment, shell=shell)
-    except:
-        return
+    while(True):
+        try:
+            subprocess.check_call(experiment, shell=shell)
+            return
+        except subprocess.CalledProcessError as e:
+            continue
 
 def gen_traces(args):
-    keywords = ['CMOS', 'FPGA', 'branch', 'anomaly', 'detection', 'prefetch', 'memory', 'floating point', 'malware', 'iot']
+    # keywords = ['CMOS', 'FPGA', 'prediction', 'anomaly', 'detection',
+    #             'prefetch', 'memory', 'automatic', 'malware', 'iot',
+    #             'branch', 'algorithm', 'power', 'capacitance', 'artificial',
+    #             'modular', 'thermal', 'circuit', 'integrated', 'chip'
+    # ]
+    keywords = ['thermal']
+    mySqlServerPID = getpid("mysqld")
+    runCommand("taskset -cp 0 " + mySqlServerPID, True)
     for i in xrange(10):
         for keyword in keywords:
-            event = 'cpu/umask=0x80,event=0xB0' #OFFCORE_REQUESTS.ALL_REQUESTS
+            event = 'offcore_requests.all_requests'
             runCommand("mkdir -p output/" + str(i))
-            # mySqlCommand = ("mysql -e 'use employees; select AVG(salary) from employees e join salaries s on e.emp_no = s.emp_no join titles t on e.emp_no = t.emp_no where e.first_name REGEXP " +
-            #                 '"' +
-            #                 letter +
-            #                 '.*";' + "'")
 
             mySqlCommand = ("mysql -e 'use patent; select * from PUBLICATION where Abstract REGEXP(" + '"' + keyword + '")' + "'")
-            command = ('pcm/pcm-core.x 0.015 -e ' +
+            command = ('perf stat -x, -I 10 -e ' +
                        event +
-                       ' -csv=output/' +
+                       ' -o output/' +
                        str(i) + '/' + keyword +
-                       '.trace -- ' +
+                       '.trace ' +
+                       '-p ' + mySqlServerPID + ' ' +
                        mySqlCommand + '>' +
                        'output/' + str(i) + '/' + keyword + 'query.out')
             runCommand(command, True)
-            #runCommand("yes | pcm/pcm-core.x 0.015 -e"  + event, True)
 
-# From list of files, create dictionary of labels (filename) with Event0 counter values
-# Assumes:  Output columns of the form 'Core,IPC,Instructions,Cycles,Event0,...'
+# From list of files, create dictionary of labels (filename) with Event counter values
+# Assumes:  Output columns of the form 'Time,counter value,unit of counter(or empty), event name, run time of counter, percentage of measurement time the counter was running'
 #           Label is filename
 def get_data(filenames):
     matrix = defaultdict(list)
-    get_event0 = lambda x : float(x.split(',')[4])
+    get_event = lambda x : float(x.split(',')[1])
     for filename in filenames:
-        base = path.basename(filename)
-        # Create timeseries features with 'Event0' counter
+        base = os.path.basename(filename)
+        # Create timeseries features with 'Event' counter
         with open(filename) as f:
-            matrix[base].append( map(get_event0, re.findall('(\*.*)', f.read())) )
+            lines = f.readlines()[2:] #throw away the Started line
+            lines = [x for x in lines if not '<not counted>' in x]
+            matrix[base].append( map(get_event, lines) )
+
+    #Trim all traces to the length of the minimum
     minLen = min(map(lambda(k,v): min(map(len, v)), matrix.iteritems()))
     for base in matrix:
         for i in xrange(len(matrix[base])):
@@ -134,8 +147,7 @@ def classify(args):
     #Plot mean trace for each query
     for label in set(y):
         data = np.mean(X[y==label], axis=0)
-        #plt.plot(xrange(len(data)), data, label=label, markersize=1)
-        plt.plot(xrange(100), data[0:100], label=label, markersize=1)
+        plt.plot(xrange(len(data)), data, label=label, markersize=1)
     plt.ylabel("Memory Requests", fontsize=8)
     plt.xlabel("Interval", fontsize=8)
     plt.tick_params(axis='y', labelsize=8)
