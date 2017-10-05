@@ -30,11 +30,10 @@ def runCommand(experiment, shell=False):
             continue
 
 def gen_traces(args):
-     keywords = ['CMOS', 'FPGA', 'prediction', 'anomaly', 'detection',
+    keywords = ['CMOS', 'FPGA', 'prediction', 'anomaly', 'detection',
                  'prefetch', 'memory', 'automatic', 'malware', 'iot',
                  'branch', 'algorithm', 'power', 'capacitance', 'artificial',
-                 'modular', 'thermal', 'circuit', 'integrated', 'chip'
-     ]
+                 'modular', 'thermal', 'circuit', 'integrated', 'chip']
     mySqlServerPID = getpid("mysqld")
     runCommand("taskset -cp 0 " + mySqlServerPID, True)
     for i in xrange(10):
