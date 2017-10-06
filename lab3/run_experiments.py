@@ -16,7 +16,7 @@ import xgboost as xgb
 
 def getpid(process_name):
     processes = os.popen('ps -aef').read()
-    return re.findall('.*mysqld.*', processes)[0].split()[1]
+    return re.findall('.*mysqld.*--user.*', processes)[0].split()[1]
 
 def runCommand(experiment, shell=False):
     print ("Running command: " + experiment + "\n")
