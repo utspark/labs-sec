@@ -26,7 +26,7 @@ def runCommand(experiment, shell=False):
         experiment = experiment.split()
     while(True):
         try:
-            subprocess.check_call(experiment, shell=shell, timeout=1)
+            subprocess.check_call(experiment, shell=shell)
             return
         except subprocess.CalledProcessError as e:
             continue
@@ -42,7 +42,7 @@ def gen_traces(args):
     runCommand("taskset -cp 0 " + mySqlServerPID, True)
     for i in xrange(10):
         for keyword in keywords:
-            event = 'LLC-load-misses'
+            event = 'l2_rqsts.miss'
             runCommand("mkdir -p output/" + str(i))
 
             mySqlCommand = ("mysql -e 'use patent; select * from PUBLICATION where Abstract REGEXP(" + '"' + keyword + '")' + "'")
