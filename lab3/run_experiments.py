@@ -3,6 +3,8 @@ import subprocess32 as subprocess
 import string
 import pandas as pd
 import re
+import matplotlib
+matplotlib.use('Agg') #dont open plots in X
 import matplotlib.pyplot as plt
 import numpy as np
 from io import StringIO
