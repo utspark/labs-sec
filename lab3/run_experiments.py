@@ -1,5 +1,5 @@
 import argparse
-import subprocess
+import subprocess32 as subprocess
 import string
 import pandas as pd
 import re
@@ -24,10 +24,12 @@ def runCommand(experiment, shell=False):
         experiment = experiment.split()
     while(True):
         try:
-            subprocess.check_call(experiment, shell=shell)
+            subprocess.check_call(experiment, shell=shell, timeout=1)
             return
         except subprocess.CalledProcessError as e:
             continue
+        except subprocess.TimeoutExpired as e:
+            return
 
 def gen_traces(args):
     keywords = ['CMOS', 'FPGA', 'prediction', 'anomaly', 'detection',
@@ -38,7 +40,7 @@ def gen_traces(args):
     runCommand("taskset -cp 0 " + mySqlServerPID, True)
     for i in xrange(10):
         for keyword in keywords:
-            event = 'offcore_requests.all_requests'
+            event = 'LLC-load-misses'
             runCommand("mkdir -p output/" + str(i))
 
             mySqlCommand = ("mysql -e 'use patent; select * from PUBLICATION where Abstract REGEXP(" + '"' + keyword + '")' + "'")
