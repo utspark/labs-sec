@@ -1,0 +1,29 @@
+policy_module(simple, 1.0.0)
+
+########################################
+#
+# Declarations
+#
+
+type simple_t;
+type simple_exec_t;
+init_daemon_domain(simple_t, simple_exec_t)
+
+type simple_var_t;
+
+files_type(simple_var_t)
+
+require {
+   class dir { add_name search write };
+   class file { open read create write getattr };
+}
+
+########################################
+#
+# simple local policy
+#
+#
+type_transition simple_t simple_var_t:file simple_var_t;
+
+allow simple_t simple_var_t:dir { search add_name write };
+allow simple_t simple_var_t:file { create open write read getattr };

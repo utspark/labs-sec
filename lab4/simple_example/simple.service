@@ -1,0 +1,12 @@
+[Unit]
+Description=Simple Example
+#After=network.target
+
+[Service]
+ExecStart=/home/osboxes/labs-sec/lab4/simple_example/simple
+WorkingDirectory=/home/osboxes/labs-sec/lab4/simple_example
+User=osboxes
+Environment=RUNMODE=production
+
+[Install]
+WantedBy=multi-user.target
