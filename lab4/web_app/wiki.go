@@ -18,7 +18,7 @@ type Page struct {
 func (p *Page) save() error {
   os.Mkdir("data", 0777)
   filename := "data/" + p.Title + ".txt"
-  return ioutil.WriteFile(filename, p.Body, 0600)
+  return ioutil.WriteFile(filename, p.Body, 0666)
 }
 
 func loadPage(title string) (*Page, error) {
