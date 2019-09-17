@@ -1,0 +1,4 @@
+/home/class/labs-sec/lab2/simple_example/simple		--	gen_context(system_u:object_r:simple_exec_t,s0)
+/home/class/labs-sec/lab2/simple_example                              gen_context(system_u:object_r:simple_var_t,s0)
+/home/class/labs-sec/lab2/simple_example/data                         gen_context(system_u:object_r:simple_var_t,s0)
+
